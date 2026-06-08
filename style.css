@@ -1470,7 +1470,7 @@ footer {
 
 @media (max-width: 768px) {
   .nav-inner { gap: 0.75rem; }
-  .nav-logo-img { height: 36px; max-width: min(132px, 48vw); }
+  .nav-logo-img { height: 80px; max-width: min(200px, 70vw); }
   .lang-switcher { padding: 0.15rem 0.3rem; }
   .lang-btn { width: 26px; height: 18px; }
   .flag-icon { width: 16px; height: 11px; }
