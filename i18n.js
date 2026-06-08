@@ -33,7 +33,7 @@ const I18N = {
 
   strings: {
     'pt-BR': {
-      'meta.title': 'Adriano Abreu — Full Stack Developer',
+      'meta.title': 'Adriano Abreu | Desenvolvedor Full Stack',
       'meta.description': 'Portfólio profissional de Adriano Abreu de Almeida — Desenvolvedor Full Stack com foco em web, UX e automação com IA.',
       'aria.menu': 'Menu',
       'aria.langGroup': 'Selecionar idioma',
@@ -193,7 +193,7 @@ const I18N = {
     },
 
     en: {
-      'meta.title': 'Adriano Abreu — Full Stack Developer',
+      'meta.title': 'Adriano Abreu | Full Stack Developer',
       'meta.description': 'Professional portfolio of Adriano Abreu de Almeida — Full Stack Developer focused on web, UX, and AI-powered automation.',
       'aria.menu': 'Menu',
       'aria.langGroup': 'Select language',
@@ -353,7 +353,7 @@ const I18N = {
     },
 
     es: {
-      'meta.title': 'Adriano Abreu — Desarrollador Full Stack',
+      'meta.title': 'Adriano Abreu | Desarrollador Full Stack',
       'meta.description': 'Portafolio profesional de Adriano Abreu de Almeida — Desarrollador Full Stack enfocado en web, UX y automatización con IA.',
       'aria.menu': 'Menú',
       'aria.langGroup': 'Seleccionar idioma',
