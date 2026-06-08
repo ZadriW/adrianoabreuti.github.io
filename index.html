@@ -725,7 +725,20 @@
           id="contact-form"
           action="https://send.pageclip.co/GwOUBlEdIkC7udlPveDEpZPY879uX9Fx/formulario-email"
           method="post"
+          novalidate
         >
+          <!-- Honeypot anti-bot (oculto para humanos) -->
+          <div class="cform-honeypot" aria-hidden="true">
+            <label for="cf-website">Website</label>
+            <input
+              type="text"
+              id="cf-website"
+              name="website"
+              tabindex="-1"
+              autocomplete="off"
+            />
+          </div>
+
           <div class="cform-row">
             <div class="cform-field">
               <label for="cf-name" class="cform-label">
@@ -739,6 +752,7 @@
                 data-i18n-placeholder="contact.form.namePh"
                 placeholder="Seu nome"
                 autocomplete="name"
+                maxlength="100"
                 required
               />
             </div>
@@ -754,6 +768,7 @@
                 data-i18n-placeholder="contact.form.emailPh"
                 placeholder="seu@email.com"
                 autocomplete="email"
+                maxlength="254"
                 required
               />
             </div>
@@ -770,6 +785,7 @@
               class="cform-input"
               data-i18n-placeholder="contact.form.subjectPh"
               placeholder="Ex: Quero desenvolver um sistema de vendas"
+              maxlength="200"
               required
             />
           </div>
@@ -785,8 +801,20 @@
               data-i18n-placeholder="contact.form.messagePh"
               placeholder="Descreva seu projeto, ideia ou dúvida..."
               rows="5"
+              maxlength="5000"
               required
             ></textarea>
+          </div>
+
+          <div class="cform-captcha-wrap">
+            <p class="cform-captcha-label mono" data-i18n="contact.captcha.label">verificação</p>
+            <div class="cform-captcha" id="turnstile-widget" role="group" aria-labelledby="captcha-desc"></div>
+            <p class="cform-captcha-hint" id="captcha-desc" data-i18n="contact.captcha.hint">
+              Confirme que você é humano para enviar a mensagem.
+            </p>
+            <p class="cform-captcha-error" id="cform-captcha-error" role="alert" hidden data-i18n="contact.error.captcha">
+              Complete a verificação de segurança antes de enviar.
+            </p>
           </div>
 
           <div class="cform-footer">
@@ -826,6 +854,8 @@
     </div>
   </footer>
 
+  <script src="security.config.js"></script>
+  <script src="https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit" defer></script>
   <script src="https://s.pageclip.co/v1/pageclip.js" charset="utf-8"></script>
   <script src="i18n.js"></script>
   <script src="script.js"></script>

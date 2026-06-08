@@ -157,43 +157,120 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   });
 });
 
-/* ── CONTACT FORM (Pageclip) ─────────────────────────────── */
+/* ── CONTACT FORM (Pageclip + Turnstile + honeypot) ──────── */
 (function () {
-  const form     = document.getElementById('contact-form');
-  const success  = document.getElementById('cform-success');
-  const errorBox = document.getElementById('cform-error');
-  const errorMsg = document.getElementById('cform-error-msg');
+  const form        = document.getElementById('contact-form');
+  const success     = document.getElementById('cform-success');
+  const errorBox    = document.getElementById('cform-error');
+  const errorMsg    = document.getElementById('cform-error-msg');
+  const honeypot    = document.getElementById('cf-website');
+  const captchaEl   = document.getElementById('turnstile-widget');
+  const captchaErr  = document.getElementById('cform-captcha-error');
 
   if (!form || typeof Pageclip === 'undefined') return;
 
   const fields = form.querySelectorAll('[required]');
+  let turnstileWidgetId = null;
+  let captchaPassed = false;
 
   function hideFeedback() {
     success.classList.remove('is-visible');
     errorBox.classList.remove('is-visible');
+    hideCaptchaError();
+  }
+
+  function showCaptchaError() {
+    if (!captchaErr) return;
+    captchaErr.textContent = I18N.t('contact.error.captcha');
+    captchaErr.hidden = false;
+    captchaErr.classList.add('is-visible');
+  }
+
+  function hideCaptchaError() {
+    if (!captchaErr) return;
+    captchaErr.hidden = true;
+    captchaErr.classList.remove('is-visible');
   }
 
   function showSuccess() {
     hideFeedback();
     form.hidden = true;
     success.classList.add('is-visible');
+    resetCaptcha();
   }
 
   function showError(message) {
     hideFeedback();
     form.hidden = false;
-    errorMsg.innerHTML = message;
+    errorMsg.textContent = '';
+    errorMsg.insertAdjacentHTML('afterbegin', message);
     errorBox.classList.add('is-visible');
+    resetCaptcha();
+  }
+
+  function resetCaptcha() {
+    captchaPassed = false;
+    if (typeof turnstile !== 'undefined' && turnstileWidgetId !== null) {
+      turnstile.reset(turnstileWidgetId);
+    }
+  }
+
+  function getTurnstileToken() {
+    const input = form.querySelector('[name="cf-turnstile-response"]');
+    return input && input.value.trim() ? input.value.trim() : '';
+  }
+
+  function isHoneypotClean() {
+    return !honeypot || honeypot.value.trim() === '';
+  }
+
+  function initTurnstile() {
+    const siteKey = window.PORTFOLIO_SECURITY && window.PORTFOLIO_SECURITY.turnstileSiteKey;
+    if (!siteKey || !captchaEl || typeof turnstile === 'undefined') return;
+
+    if (turnstileWidgetId !== null) {
+      turnstile.remove(turnstileWidgetId);
+      turnstileWidgetId = null;
+    }
+
+    turnstileWidgetId = turnstile.render(captchaEl, {
+      sitekey: siteKey,
+      theme: 'dark',
+      language: I18N.currentLang === 'pt-BR' ? 'pt-BR' : I18N.currentLang,
+      callback: () => {
+        captchaPassed = true;
+        hideCaptchaError();
+      },
+      'expired-callback': () => { captchaPassed = false; },
+      'error-callback': () => { captchaPassed = false; },
+    });
+  }
+
+  function waitForTurnstile(attempts = 0) {
+    if (typeof turnstile !== 'undefined') {
+      initTurnstile();
+      return;
+    }
+    if (attempts < 40) {
+      setTimeout(() => waitForTurnstile(attempts + 1), 150);
+    }
   }
 
   hideFeedback();
+  waitForTurnstile();
+  document.addEventListener('langchange', () => {
+    hideCaptchaError();
+    waitForTurnstile();
+  });
 
   function validateField(el) {
-    const empty = el.value.trim() === '';
-    const emailInvalid = el.type === 'email' && el.value.trim() !== ''
-      && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(el.value.trim());
+    const value = el.value.trim();
+    const empty = value === '';
+    const emailInvalid = el.type === 'email' && value !== ''
+      && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+    const tooLong = el.maxLength > 0 && value.length > el.maxLength;
 
-    if (empty || emailInvalid) {
+    if (empty || emailInvalid || tooLong) {
       el.classList.add('invalid');
       return false;
     }
@@ -208,12 +285,25 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
 
   Pageclip.form(form, {
     onSubmit: function () {
+      if (!isHoneypotClean()) {
+        showError(I18N.t('contact.error.honeypot'));
+        return false;
+      }
+
       let valid = true;
       fields.forEach(f => { if (!validateField(f)) valid = false; });
       if (!valid) {
         fields[0].focus();
         return false;
       }
+
+      const token = getTurnstileToken();
+      if (!captchaPassed || !token) {
+        showCaptchaError();
+        if (captchaEl) captchaEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        return false;
+      }
+
       hideFeedback();
     },
     onResponse: function (error) {

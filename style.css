@@ -1360,6 +1360,54 @@ ul { list-style: none; }
 .cform-textarea {
   line-height: 1.6;
 }
+
+/* Honeypot — invisível para usuários reais */
+.cform-honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* Cloudflare Turnstile */
+.cform-captcha-wrap {
+  margin-top: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+.cform-captcha-label {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  margin-bottom: 0.65rem;
+  text-transform: lowercase;
+}
+.cform-captcha {
+  min-height: 65px;
+  display: flex;
+  align-items: center;
+}
+.cform-captcha-hint {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  margin-top: 0.55rem;
+  line-height: 1.5;
+}
+.cform-captcha-error {
+  font-size: 0.8rem;
+  color: var(--red);
+  margin-top: 0.5rem;
+  line-height: 1.4;
+}
+.cform-captcha-error.is-visible {
+  display: block;
+}
+.cform-captcha-error[hidden] {
+  display: none;
+}
+
 .cform-footer {
   display: flex;
   align-items: center;
