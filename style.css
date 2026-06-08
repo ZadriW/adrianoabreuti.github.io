@@ -19,10 +19,7 @@
 
   --accent:     #10b981;   /* emerald */
   --accent-2:   #34d399;
-  --accent-glow:       rgba(16, 185, 129, 0.20);
-  --accent-glow-mid:   rgba(16, 185, 129, 0.10);
   --accent-glow-soft:  rgba(16, 185, 129, 0.05);
-  --accent-glow-faint: rgba(52, 211, 153, 0.04);
   --blue:       #58a6ff;
   --purple:     #a371f7;
   --yellow:     #e3b341;
@@ -40,7 +37,14 @@
   --shadow-lg: 0 16px 48px rgba(0,0,0,.6);
 }
 
-html { font-size: 16px; }
+html {
+  font-size: 16px;
+  scroll-behavior: auto;
+}
+
+html.nicescroll-enabled {
+  overflow: hidden;
+}
 
 body {
   background-color: var(--bg);
@@ -50,110 +54,19 @@ body {
   overflow-x: hidden;
 }
 
-/* ── AMBIENT BACKGROUND (global, GPU-friendly) ─────────────── */
-.ambient-bg {
-  position: fixed;
-  inset: 0;
-  z-index: 0;
-  pointer-events: none;
-  overflow: hidden;
-  contain: strict;
-  isolation: isolate;
-  background:
-    radial-gradient(circle at 18% 24%, var(--accent-glow-soft) 0%, transparent 42%),
-    radial-gradient(circle at 82% 18%, var(--accent-glow-faint) 0%, transparent 38%),
-    radial-gradient(circle at 70% 76%, var(--accent-glow-faint) 0%, transparent 44%),
-    var(--bg);
+/* NiceScroll — barra customizada (tema dark + verde) */
+html.nicescroll-enabled .nicescroll-rails.portfolio-nicescroll {
+  opacity: 1;
+  transition: opacity 0.25s ease;
 }
 
-/* Dot-grid estático — sem mask (evita repaint extra) */
-.ambient-bg::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background-image: radial-gradient(circle, rgba(48, 54, 61, 0.35) 1px, transparent 1px);
-  background-size: 32px 32px;
-  opacity: 0.4;
+html.nicescroll-enabled .nicescroll-rails.portfolio-nicescroll .nicescroll-cursors {
+  transition: background-color 0.2s ease, opacity 0.2s ease;
 }
 
-.ambient-orb {
-  position: absolute;
-  border-radius: 50%;
-  transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  /* Gradiente amplo simula blur — sem filter (muito custoso) */
-}
-
-.ambient-orb--1 {
-  width: 70vmax;
-  height: 70vmax;
-  top: -22%;
-  left: -18%;
-  background: radial-gradient(
-    circle at 42% 40%,
-    rgba(16, 185, 129, 0.13) 0%,
-    rgba(16, 185, 129, 0.07) 22%,
-    rgba(16, 185, 129, 0.03) 42%,
-    transparent 68%
-  );
-  mask-image: radial-gradient(ellipse 55% 58% at 42% 40%, #000 10%, transparent 72%);
-  -webkit-mask-image: radial-gradient(ellipse 55% 58% at 42% 40%, #000 10%, transparent 72%);
-  animation: ambient-drift-1 48s ease-in-out infinite;
-}
-
-.ambient-orb--2 {
-  width: 55vmax;
-  height: 55vmax;
-  bottom: -12%;
-  right: -16%;
-  background: radial-gradient(
-    circle at 50% 50%,
-    rgba(52, 211, 153, 0.11) 0%,
-    rgba(16, 185, 129, 0.05) 28%,
-    rgba(16, 185, 129, 0.02) 48%,
-    transparent 70%
-  );
-  mask-image: radial-gradient(ellipse 50% 62% at 50% 50%, #000 8%, transparent 70%);
-  -webkit-mask-image: radial-gradient(ellipse 50% 62% at 50% 50%, #000 8%, transparent 70%);
-  animation: ambient-drift-2 56s ease-in-out infinite;
-}
-
-.ambient-vignette {
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(
-    ellipse 110% 85% at 50% 50%,
-    transparent 40%,
-    rgba(13, 17, 23, 0.55) 78%,
-    rgba(13, 17, 23, 0.9) 100%
-  );
-}
-
-/* Apenas transform — propriedade composta pela GPU, sem opacity */
-@keyframes ambient-drift-1 {
-  0%, 100% { transform: translate3d(0, 0, 0); }
-  50%      { transform: translate3d(5vw, 6vh, 0); }
-}
-
-@keyframes ambient-drift-2 {
-  0%, 100% { transform: translate3d(0, 0, 0); }
-  50%      { transform: translate3d(-4vw, -5vh, 0); }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .ambient-orb { animation: none; }
-}
-
-@media (max-width: 768px) {
-  .ambient-orb { animation: none; }
-}
-
-/* Camadas de conteúdo acima do ambiente */
-#navbar,
-section,
-footer {
-  position: relative;
-  z-index: 1;
+html.nicescroll-enabled .nicescroll-rails.portfolio-nicescroll:hover .nicescroll-cursors {
+  background-color: var(--accent-2) !important;
+  opacity: 0.95 !important;
 }
 
 /* ── UTILITIES ───────────────────────────────────────────── */
@@ -197,7 +110,7 @@ ul { list-style: none; }
   border-radius: var(--radius-sm);
   font-weight: 600;
   font-size: .95rem;
-  transition: all .2s ease;
+  transition: background-color .2s ease, color .2s ease, transform .2s ease, box-shadow .2s ease, border-color .2s ease;
   cursor: pointer;
   border: none;
   text-decoration: none;
@@ -434,7 +347,7 @@ ul { list-style: none; }
   place-items: center;
   color: var(--text-muted);
   font-size: .9rem;
-  transition: all .2s;
+  transition: border-color .2s, color .2s, transform .2s;
 }
 .hero-socials a:hover {
   border-color: var(--accent);
@@ -622,7 +535,7 @@ ul { list-style: none; }
   padding: .3rem .65rem;
   font-size: .8rem;
   color: var(--text-muted);
-  transition: all .2s;
+  transition: border-color .2s, color .2s, background-color .2s;
   font-family: var(--font-mono);
 }
 .skill-tag:hover {
@@ -1230,7 +1143,7 @@ ul { list-style: none; }
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 1.25rem 1.5rem;
-  transition: all .2s;
+  transition: border-color .2s, transform .2s, box-shadow .2s;
 }
 .contact-card:hover {
   border-color: var(--accent);
@@ -1502,16 +1415,21 @@ footer {
   color: var(--text-dim);
 }
 
-/* ── SCROLL ANIMATIONS ───────────────────────────────────── */
+/* ── SCROLL ANIMATIONS (entrada + saída espelhada) ───────── */
 .reveal {
   opacity: 0;
-  transform: translate3d(0, 16px, 0);
-  transition: opacity .4s ease, transform .4s ease;
-  will-change: auto;
+  transform: translate3d(0, 14px, 0);
+  /* mesma curva/duração nos dois sentidos — remover .visible reproduz
+     a animação de entrada ao contrário (opacity↓ + translateY↑) */
+  transition: opacity .45s ease, transform .45s ease;
 }
 .reveal.visible {
   opacity: 1;
   transform: translate3d(0, 0, 0);
+}
+/* will-change só durante a transição ativa — evita VRAM em repouso */
+.reveal.is-animating {
+  will-change: opacity, transform;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1519,6 +1437,9 @@ footer {
     opacity: 1;
     transform: none;
     transition: none;
+  }
+  .reveal.is-animating {
+    will-change: auto;
   }
 }
 

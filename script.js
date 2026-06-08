@@ -7,14 +7,24 @@
 const navbar = document.getElementById('navbar');
 let navScrollTicking = false;
 
-window.addEventListener('scroll', () => {
+function updateNavbarScrollState() {
+  const scrollTop = typeof portfolioGetScrollTop === 'function'
+    ? portfolioGetScrollTop()
+    : (window.scrollY || 0);
+  navbar.classList.toggle('scrolled', scrollTop > 20);
+}
+
+function onPageScroll() {
   if (navScrollTicking) return;
   navScrollTicking = true;
   requestAnimationFrame(() => {
-    navbar.classList.toggle('scrolled', window.scrollY > 20);
+    updateNavbarScrollState();
     navScrollTicking = false;
   });
-}, { passive: true });
+}
+
+window.addEventListener('scroll', onPageScroll, { passive: true });
+document.addEventListener('portfolio-scroll', onPageScroll);
 
 /* ── HAMBURGER menu ──────────────────────────────────────── */
 const hamburger = document.getElementById('hamburger');
@@ -100,25 +110,89 @@ function type() {
 document.addEventListener('DOMContentLoaded', resetTypewriter);
 document.addEventListener('langchange', resetTypewriter);
 
-/* ── REVEAL on scroll (IntersectionObserver) ─────────────── */
-const targets = document.querySelectorAll(
+/* ── REVEAL on scroll (entrada + saída espelhada) ────────── */
+const revealTargets = document.querySelectorAll(
   '.skill-group, .stepper-step, .timeline-item, .project-card, .cert-card, ' +
   '.stat-card, .contact-card, .about-text, .about-stats, ' +
   '.project-featured, .edu-card'
 );
 
-targets.forEach(el => el.classList.add('reveal'));
+const REVEAL_TRANSITION_MS = 450;
+const REVEAL_STAGGER_MS = 30;
+const REVEAL_EXIT_DEBOUNCE_MS = 70;
 
-const observer = new IntersectionObserver(entries => {
+const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const revealTimers = new WeakMap();
+const revealCleanupTimers = new WeakMap();
+
+revealTargets.forEach(el => el.classList.add('reveal'));
+
+function clearRevealTimer(el) {
+  const id = revealTimers.get(el);
+  if (id == null) return;
+  clearTimeout(id);
+  revealTimers.delete(el);
+}
+
+function scheduleRevealCleanup(el) {
+  const prev = revealCleanupTimers.get(el);
+  if (prev != null) clearTimeout(prev);
+  revealCleanupTimers.set(el, setTimeout(() => {
+    el.classList.remove('is-animating');
+    revealCleanupTimers.delete(el);
+  }, REVEAL_TRANSITION_MS + 40));
+}
+
+function setRevealVisible(el, show) {
+  if (prefersReducedMotion) {
+    el.classList.toggle('visible', show);
+    return;
+  }
+
+  const isVisible = el.classList.contains('visible');
+  if (isVisible === show) return;
+
+  el.classList.add('is-animating');
+  el.classList.toggle('visible', show);
+  scheduleRevealCleanup(el);
+}
+
+function queueRevealChange(el, show, delay) {
+  clearRevealTimer(el);
+  if (delay <= 0) {
+    setRevealVisible(el, show);
+    return;
+  }
+  revealTimers.set(el, setTimeout(() => setRevealVisible(el, show), delay));
+}
+
+const revealObserver = new IntersectionObserver(entries => {
+  const entering = [];
+  const leaving = [];
+
   entries.forEach(entry => {
-    if (entry.isIntersecting) {
-      entry.target.classList.add('visible');
-      observer.unobserve(entry.target);
+    if (entry.isIntersecting && entry.intersectionRatio >= 0.08) {
+      entering.push(entry.target);
+    } else if (!entry.isIntersecting) {
+      leaving.push(entry.target);
     }
   });
-}, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
 
-targets.forEach(t => observer.observe(t));
+  entering.forEach((el, i) => {
+    queueRevealChange(el, true, i * REVEAL_STAGGER_MS);
+  });
+
+  /* debounce curto na saída evita flicker na borda do viewport;
+     escalonamento espelhado distribui a carga GPU como na entrada */
+  leaving.forEach((el, i) => {
+    queueRevealChange(el, false, REVEAL_EXIT_DEBOUNCE_MS + i * REVEAL_STAGGER_MS);
+  });
+}, {
+  threshold: [0, 0.08, 0.15],
+  rootMargin: '0px 0px -40px 0px',
+});
+
+revealTargets.forEach(t => revealObserver.observe(t));
 
 /* ── ACTIVE nav link highlight ───────────────────────────── */
 const sections = document.querySelectorAll('section[id]');
@@ -152,8 +226,12 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     const target = document.querySelector(anchor.getAttribute('href'));
     if (!target) return;
     e.preventDefault();
-    const offset = 64 + 16;
-    window.scrollTo({ top: target.offsetTop - offset, behavior: 'smooth' });
+    if (typeof portfolioScrollToSection === 'function') {
+      portfolioScrollToSection(target);
+    } else {
+      const offset = 64 + 16;
+      window.scrollTo({ top: target.offsetTop - offset, behavior: 'smooth' });
+    }
   });
 });
 
