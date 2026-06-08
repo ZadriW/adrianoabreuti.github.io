@@ -10,14 +10,19 @@
 
   const NAV_OFFSET = 80;
 
-  /* Ajuste fino de suavidade — scrollspeed controla a duração da inércia
-     após cada movimento da roda (fórmula interna: 80 + (distância/72) * scrollspeed) */
+  /* scrollspeed (roda): controla inércia do mouse — fórmula interna do NiceScroll:
+     duração = 80 + (distância / 72) * scrollspeed
+     Para âncoras da navbar usamos scrollspeed menor = transição mais curta. */
   const SCROLL_TUNING = {
     scrollspeed: 145,
     mousescrollstep: 44,
     snapbackspeed: 110,
-    anchorDuration: 2800,
-    anchorMinDuration: 1400,
+    /* navegação por nav-links — mais direta, menos inércia */
+    anchorDuration: 820,
+    anchorMinDuration: 360,
+    anchorScrollSpeedMin: 28,
+    anchorScrollSpeedMax: 105,
+    anchorMsPerPx: 0.28,
   };
 
   let niceInstance = null;
@@ -103,10 +108,23 @@
     return niceInstance;
   }
 
+  function anchorDurationForDistance(distance) {
+    const { anchorMinDuration, anchorDuration, anchorMsPerPx } = SCROLL_TUNING;
+    return Math.min(
+      anchorDuration,
+      Math.max(anchorMinDuration, 220 + distance * anchorMsPerPx)
+    );
+  }
+
   function durationToScrollSpeed(distance, targetMs) {
     if (distance <= 0) return defaultScrollSpeed;
-    const ms = Math.max(SCROLL_TUNING.anchorMinDuration, targetMs);
-    return Math.max(defaultScrollSpeed, ((ms - 80) * 72 / distance) | 0);
+    const ms = Math.max(SCROLL_TUNING.anchorMinDuration, Math.min(targetMs, SCROLL_TUNING.anchorDuration));
+    const speed = ((ms - 80) * 72 / distance) | 0;
+    /* não usar Math.max(defaultScrollSpeed) — isso impedia âncoras mais rápidas que a roda */
+    return Math.max(
+      SCROLL_TUNING.anchorScrollSpeedMin,
+      Math.min(speed, SCROLL_TUNING.anchorScrollSpeedMax)
+    );
   }
 
   function restoreScrollSpeed(api, delay) {
@@ -149,8 +167,10 @@
 
   window.portfolioScrollToSection = function (el) {
     if (!el) return;
-    const top = el.getBoundingClientRect().top + portfolioGetScrollTop() - NAV_OFFSET;
-    portfolioSmoothScrollTo(top);
+    const currentTop = portfolioGetScrollTop();
+    const top = Math.max(0, el.getBoundingClientRect().top + currentTop - NAV_OFFSET);
+    const distance = Math.abs(top - currentTop);
+    portfolioSmoothScrollTo(top, anchorDurationForDistance(distance));
   };
 
   $(function () {
