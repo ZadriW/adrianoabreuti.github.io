@@ -172,7 +172,7 @@ ul { list-style: none; }
   font-size: .875rem;
   color: var(--text-muted);
   transition: color .2s;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   letter-spacing: .02em;
 }
 .nav-links a:hover { color: var(--text); }
@@ -991,9 +991,19 @@ ul { list-style: none; }
 }
 .pc-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
 }
 .pc-icon { font-size: 1.5rem; }
+.pc-links a {
+  font-size: 1.1rem;
+  color: var(--text-muted);
+  transition: color .2s, transform .2s;
+}
+.pc-links a:hover {
+  color: var(--accent);
+  transform: translateY(-1px);
+}
 .pc-title {
   font-size: 1rem;
   font-weight: 700;
