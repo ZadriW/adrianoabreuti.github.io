@@ -156,13 +156,20 @@ ul { list-style: none; }
   justify-content: space-between;
 }
 .nav-logo {
-  font-family: var(--font-mono);
-  font-size: 1rem;
-  font-weight: 700;
-  color: var(--text);
-  transition: color .2s;
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  line-height: 0;
+  transition: opacity .2s ease;
 }
-.nav-logo:hover { color: var(--accent); }
+.nav-logo:hover { opacity: 0.88; }
+.nav-logo-img {
+  display: block;
+  height: 100px;
+  width: auto;
+  max-width: min(170px, 44vw);
+  object-fit: contain;
+}
 .nav-links {
   display: flex;
   gap: 2rem;
@@ -1463,6 +1470,7 @@ footer {
 
 @media (max-width: 768px) {
   .nav-inner { gap: 0.75rem; }
+  .nav-logo-img { height: 36px; max-width: min(132px, 48vw); }
   .lang-switcher { padding: 0.15rem 0.3rem; }
   .lang-btn { width: 26px; height: 18px; }
   .flag-icon { width: 16px; height: 11px; }
