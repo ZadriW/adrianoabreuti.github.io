@@ -991,16 +991,9 @@ ul { list-style: none; }
 }
 .pc-header {
   display: flex;
-  justify-content: space-between;
   align-items: center;
 }
 .pc-icon { font-size: 1.5rem; }
-.pc-links a {
-  font-size: 1.1rem;
-  color: var(--text-muted);
-  transition: color .2s;
-}
-.pc-links a:hover { color: var(--accent); }
 .pc-title {
   font-size: 1rem;
   font-weight: 700;
