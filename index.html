@@ -819,6 +819,9 @@
 
           <div class="cform-captcha-wrap">
             <p class="cform-captcha-label mono" data-i18n="contact.captcha.label">verificação</p>
+            <!-- Widget dentro do form: Turnstile injeta cf-turnstile-response aqui.
+                 O campo é removido do DOM em onSubmit (antes da serialização do Pageclip)
+                 e substituído pelo campo legível "verificacao". -->
             <div class="cform-captcha" id="turnstile-widget" role="group" aria-labelledby="captcha-desc"></div>
             <p class="cform-captcha-hint" id="captcha-desc" data-i18n="contact.captcha.hint">
               Confirme que você é humano para enviar a mensagem.
@@ -826,6 +829,7 @@
             <p class="cform-captcha-error" id="cform-captcha-error" role="alert" hidden data-i18n="contact.error.captcha">
               Complete a verificação de segurança antes de enviar.
             </p>
+            <input type="hidden" name="verificacao" id="cf-captcha-status" value="Reprovado" />
           </div>
 
           <div class="cform-footer">

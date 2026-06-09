@@ -235,31 +235,59 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
   });
 });
 
+/* ── XHR intercept: remove cf-turnstile-response do payload do Pageclip ──
+   O Pageclip serializa o form com formToJSON() ANTES de chamar onSubmit(),
+   portanto manipulações no onSubmit chegam tarde demais. A única camada
+   confiável é interceptar o XHR.send() antes de o corpo sair pela rede. */
+(function () {
+  'use strict';
+  var _xhrSend = XMLHttpRequest.prototype.send;
+  XMLHttpRequest.prototype.send = function (body) {
+    if (typeof body === 'string' && body.indexOf('cf-turnstile-response') !== -1) {
+      try {
+        var obj = JSON.parse(body);
+        delete obj['cf-turnstile-response'];
+        body = JSON.stringify(obj);
+      } catch (_) {
+        /* fallback para body url-encoded */
+        body = body.split('&')
+          .filter(function (p) { return p.indexOf('cf-turnstile-response') !== 0; })
+          .join('&');
+      }
+    }
+    return _xhrSend.call(this, body);
+  };
+})();
+
 /* ── CONTACT FORM (Pageclip + Turnstile + honeypot) ──────── */
 (function () {
-  const form        = document.getElementById('contact-form');
-  const success     = document.getElementById('cform-success');
-  const errorBox    = document.getElementById('cform-error');
-  const errorMsg    = document.getElementById('cform-error-msg');
-  const honeypot    = document.getElementById('cf-website');
-  const captchaEl   = document.getElementById('turnstile-widget');
-  const captchaErr  = document.getElementById('cform-captcha-error');
+  'use strict';
+
+  const form          = document.getElementById('contact-form');
+  const success       = document.getElementById('cform-success');
+  const errorBox      = document.getElementById('cform-error');
+  const errorMsg      = document.getElementById('cform-error-msg');
+  const honeypot      = document.getElementById('cf-website');
+  const captchaEl     = document.getElementById('turnstile-widget');
+  const captchaErr    = document.getElementById('cform-captcha-error');
+  const captchaStatus = document.getElementById('cf-captcha-status');
 
   if (!form || typeof Pageclip === 'undefined') return;
 
   const fields = form.querySelectorAll('[required]');
-  let turnstileWidgetId = null;
-  let captchaPassed = false;
+  let widgetId     = null;   // ID retornado por turnstile.render()
+  let captchaDone  = false;  // true somente após callback de sucesso do Turnstile
 
-  function hideFeedback() {
-    success.classList.remove('is-visible');
-    errorBox.classList.remove('is-visible');
-    hideCaptchaError();
+  /* ── Utilidades de status ── */
+  function t(key) { return (typeof I18N !== 'undefined') ? I18N.t(key) : key; }
+
+  function setStatus(approved) {
+    if (captchaStatus) captchaStatus.value = approved ? t('contact.captcha.approved') : t('contact.captcha.rejected');
   }
 
   function showCaptchaError() {
     if (!captchaErr) return;
-    captchaErr.textContent = I18N.t('contact.error.captcha');
+    captchaErr.textContent = t('contact.error.captcha');
     captchaErr.hidden = false;
     captchaErr.classList.add('is-visible');
   }
@@ -270,142 +298,150 @@ document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     captchaErr.classList.remove('is-visible');
   }
 
+  function hideFeedback() {
+    success.classList.remove('is-visible');
+    errorBox.classList.remove('is-visible');
+    hideCaptchaError();
+  }
+
+  /* ── Estados do formulário ── */
   function showSuccess() {
     hideFeedback();
-    form.hidden = true;
+    form.style.display = 'none';
     success.classList.add('is-visible');
-    resetCaptcha();
+    doResetCaptcha();
   }
 
   function showError(message) {
     hideFeedback();
-    form.hidden = false;
-    errorMsg.textContent = '';
-    errorMsg.insertAdjacentHTML('afterbegin', message);
+    form.style.display = '';
+    errorMsg.innerHTML = message;
     errorBox.classList.add('is-visible');
-    resetCaptcha();
+    doResetCaptcha();
   }
 
-  function resetCaptcha() {
-    captchaPassed = false;
-    if (typeof turnstile !== 'undefined' && turnstileWidgetId !== null) {
-      turnstile.reset(turnstileWidgetId);
+  /* ── Turnstile ── */
+  function doResetCaptcha() {
+    captchaDone = false;
+    setStatus(false);
+    if (typeof turnstile !== 'undefined' && widgetId !== null) {
+      try { turnstile.reset(widgetId); } catch (_) {}
     }
-  }
-
-  function getTurnstileToken() {
-    const input = form.querySelector('[name="cf-turnstile-response"]');
-    return input && input.value.trim() ? input.value.trim() : '';
-  }
-
-  function isHoneypotClean() {
-    return !honeypot || honeypot.value.trim() === '';
   }
 
   function initTurnstile() {
     const siteKey = window.PORTFOLIO_SECURITY && window.PORTFOLIO_SECURITY.turnstileSiteKey;
     if (!siteKey || !captchaEl || typeof turnstile === 'undefined') return;
 
-    if (turnstileWidgetId !== null) {
-      turnstile.remove(turnstileWidgetId);
-      turnstileWidgetId = null;
+    /* Evita renderizar dois widgets no mesmo container */
+    if (widgetId !== null) {
+      try { turnstile.remove(widgetId); } catch (_) {}
+      widgetId = null;
     }
+    if (captchaEl.querySelector('iframe')) return;
 
-    turnstileWidgetId = turnstile.render(captchaEl, {
-      sitekey: siteKey,
-      theme: 'dark',
-      language: I18N.currentLang === 'pt-BR' ? 'pt-BR' : I18N.currentLang,
-      callback: () => {
-        captchaPassed = true;
+    widgetId = turnstile.render(captchaEl, {
+      sitekey:  siteKey,
+      theme:    'dark',
+      language: (typeof I18N !== 'undefined' && I18N.currentLang === 'pt-BR') ? 'pt-BR' : ((typeof I18N !== 'undefined') ? I18N.currentLang : 'pt-BR'),
+      callback: function () {
+        captchaDone = true;
+        setStatus(true);
         hideCaptchaError();
       },
-      'expired-callback': () => { captchaPassed = false; },
-      'error-callback': () => { captchaPassed = false; },
+      'expired-callback': function () {
+        captchaDone = false;
+        setStatus(false);
+      },
+      'error-callback': function () {
+        captchaDone = false;
+        setStatus(false);
+      },
     });
   }
 
-  function waitForTurnstile(attempts = 0) {
-    if (typeof turnstile !== 'undefined') {
-      initTurnstile();
-      return;
-    }
-    if (attempts < 40) {
-      setTimeout(() => waitForTurnstile(attempts + 1), 150);
-    }
+  /* Aguarda o script do Turnstile carregar (tem defer no <head>) */
+  function waitForTurnstile(attempts) {
+    attempts = attempts || 0;
+    if (typeof turnstile !== 'undefined') { initTurnstile(); return; }
+    if (attempts < 60) setTimeout(function () { waitForTurnstile(attempts + 1); }, 200);
   }
 
+  /* ── Validação de campos ── */
+  function validateField(el) {
+    var v = el.value.trim();
+    var bad = v === ''
+      || (el.type === 'email' && v && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v))
+      || (el.maxLength > 0 && v.length > el.maxLength);
+    el.classList.toggle('invalid', bad);
+    return !bad;
+  }
+
+  fields.forEach(function (f) {
+    f.addEventListener('input', function () { validateField(f); });
+    f.addEventListener('blur',  function () { validateField(f); });
+  });
+
+  /* ── Init ── */
   hideFeedback();
+  setStatus(false);
   waitForTurnstile();
-  document.addEventListener('langchange', () => {
+
+  document.addEventListener('langchange', function () {
     hideCaptchaError();
+    setStatus(captchaDone);
+    /* Re-renderiza com o novo idioma */
+    widgetId = null;
+    if (captchaEl) captchaEl.innerHTML = '';
     waitForTurnstile();
   });
 
-  function validateField(el) {
-    const value = el.value.trim();
-    const empty = value === '';
-    const emailInvalid = el.type === 'email' && value !== ''
-      && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
-    const tooLong = el.maxLength > 0 && value.length > el.maxLength;
-
-    if (empty || emailInvalid || tooLong) {
-      el.classList.add('invalid');
-      return false;
-    }
-    el.classList.remove('invalid');
-    return true;
-  }
-
-  fields.forEach(f => {
-    f.addEventListener('input', () => validateField(f));
-    f.addEventListener('blur',  () => validateField(f));
-  });
-
+  /* ── Pageclip ── */
   Pageclip.form(form, {
     onSubmit: function () {
-      if (!isHoneypotClean()) {
-        showError(I18N.t('contact.error.honeypot'));
+      /* 1. Honeypot */
+      if (honeypot && honeypot.value.trim() !== '') {
+        showError(t('contact.error.honeypot'));
         return false;
       }
 
-      let valid = true;
-      fields.forEach(f => { if (!validateField(f)) valid = false; });
-      if (!valid) {
-        fields[0].focus();
-        return false;
-      }
+      /* 2. Campos obrigatórios */
+      var valid = true;
+      fields.forEach(function (f) { if (!validateField(f)) valid = false; });
+      if (!valid) { fields[0].focus(); return false; }
 
-      const token = getTurnstileToken();
-      if (!captchaPassed || !token) {
+      /* 3. Captcha */
+      if (!captchaDone) {
+        setStatus(false);
         showCaptchaError();
         if (captchaEl) captchaEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
         return false;
       }
 
+      /* 4. Aprovado — o token cf-turnstile-response é removido pelo intercept
+             do XHR.send() definido acima; aqui só atualizamos o campo legível */
+      setStatus(true);
       hideFeedback();
+      /* retorna undefined → Pageclip prossegue com o envio */
     },
-    onResponse: function (error) {
-      if (!error) {
-        showSuccess();
-        return false;
-      }
 
-      const origin = window.location.origin;
-      let detail = I18N.t('contact.error.send');
+    onResponse: function (error) {
+      if (!error) { showSuccess(); return false; }
+
+      var origin = window.location.origin;
+      var detail = t('contact.error.send');
 
       if (origin.startsWith('file://')) {
-        detail = I18N.t('contact.error.file');
-      } else if (origin.includes('127.0.0.1')) {
-        detail = I18N.t('contact.error.localhost');
+        detail = t('contact.error.file');
+      } else if (origin.includes('127.0.0.1') || origin.includes('localhost')) {
+        detail = t('contact.error.localhost');
       } else if (String(error.message || '').includes('Error submitting data')) {
-        detail = I18N.t('contact.error.domain');
+        detail = t('contact.error.domain');
       }
 
-      showError(
-        `${detail} ${I18N.t('contact.error.fallback')} ` +
-        `<a href="mailto:adrianoabreudealmeida@gmail.com">adrianoabreudealmeida@gmail.com</a>.`
-      );
+      showError(detail + ' ' + t('contact.error.fallback') +
+        ' <a href="mailto:adrianoabreudealmeida@gmail.com">adrianoabreudealmeida@gmail.com</a>.');
       return false;
-    }
+    },
   });
 })();
